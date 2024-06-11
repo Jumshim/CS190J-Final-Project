@@ -25,16 +25,18 @@ contract Marketplace {
         accounts[msg.sender] = AccountType.Escrow;
     }
 
-    function sendContract(address _freelancer, uint256 _deadlineDate) external payable {
+    function sendContract(address _freelancer, uint256 _days) external payable {
         require(accounts[msg.sender] == AccountType.Employer, "Only employers can send contracts");
         require(accounts[_freelancer] == AccountType.Freelancer, "Can only send contracts to freelancers");
         require(msg.value > 0, "Must send ether to fund the contract");
+        require(_days > 0, "Contract length must be at least one day");
         uint256 contractId = contractCount++;
+        uint256 deadlineDate = block.timestamp + (_days * 1 days);
         jobContracts[contractId] = ContractStruct.JobContract({
             id: contractId,
             value: msg.value,
             dateAssigned: block.timestamp,
-            deadlineDate: _deadlineDate,
+            deadlineDate: deadlineDate,
             employer: msg.sender,
             freelancer: _freelancer,
             status: ContractStruct.Status.Created,

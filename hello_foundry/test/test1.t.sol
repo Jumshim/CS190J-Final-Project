@@ -49,7 +49,7 @@ contract MarketplaceTest is Test {
         marketplace.registerAsFreelancer();
 
         vm.prank(employer);
-        marketplace.sendContract{value: 5 ether}(freelancer, 1650938400);
+        marketplace.sendContract{value: 5 ether}(freelancer, 10); // 10 days
 
         ContractStruct.JobContract memory jobContract = marketplace.viewContract(0);
 
@@ -57,6 +57,19 @@ contract MarketplaceTest is Test {
         assertEq(jobContract.freelancer, freelancer, "Freelancer address mismatch");
         assertEq(jobContract.value, 5 ether, "Contract value mismatch");
         assertEq(uint(jobContract.status), uint(ContractStruct.Status.Created), "Contract status should be Created");
+        assertTrue(jobContract.deadlineDate > block.timestamp, "Deadline should be in the future");
+    }
+
+    function testSendContractWithZeroDays() public {
+        vm.prank(employer);
+        marketplace.registerAsEmployer();
+
+        vm.prank(freelancer);
+        marketplace.registerAsFreelancer();
+
+        vm.prank(employer);
+        vm.expectRevert("Contract length must be at least one day");
+        marketplace.sendContract{value: 5 ether}(freelancer, 0); // 0 days should revert
     }
 
     function testAcceptContract() public {
@@ -67,7 +80,7 @@ contract MarketplaceTest is Test {
         marketplace.registerAsFreelancer();
 
         vm.prank(employer);
-        marketplace.sendContract{value: 5 ether}(freelancer, 1650938400);
+        marketplace.sendContract{value: 5 ether}(freelancer, 10); // 10 days
 
         vm.prank(freelancer);
         marketplace.acceptContract(0);
@@ -85,7 +98,7 @@ contract MarketplaceTest is Test {
         marketplace.registerAsFreelancer();
 
         vm.prank(employer);
-        marketplace.sendContract{value: 5 ether}(freelancer, 1650938400);
+        marketplace.sendContract{value: 5 ether}(freelancer, 10); // 10 days
 
         vm.prank(freelancer);
         marketplace.acceptContract(0);
@@ -106,7 +119,7 @@ contract MarketplaceTest is Test {
         marketplace.registerAsFreelancer();
 
         vm.prank(employer);
-        marketplace.sendContract{value: 5 ether}(freelancer, 1650938400);
+        marketplace.sendContract{value: 5 ether}(freelancer, 10); // 10 days
 
         vm.prank(freelancer);
         marketplace.acceptContract(0);
@@ -127,7 +140,7 @@ contract MarketplaceTest is Test {
         marketplace.registerAsFreelancer();
 
         vm.prank(employer);
-        marketplace.sendContract{value: 5 ether}(freelancer, 1650938400);
+        marketplace.sendContract{value: 5 ether}(freelancer, 10); // 10 days
 
         vm.prank(freelancer);
         marketplace.acceptContract(0);
