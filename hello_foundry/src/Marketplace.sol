@@ -37,7 +37,9 @@ contract Marketplace {
             deadlineDate: _deadlineDate,
             employer: msg.sender,
             freelancer: _freelancer,
-            status: ContractStruct.Status.Created
+            status: ContractStruct.Status.Created,
+            freelancerSatisfied: false,
+            employerSatisfied: false
         });
     }
 
@@ -57,13 +59,29 @@ contract Marketplace {
         payable(jobContract.employer).transfer(jobContract.value);
     }
 
-    function satisfyContract(uint256 _contractId) external {
+    function freelancerSatisfyContract(uint256 _contractId) external {
         ContractStruct.JobContract storage jobContract = jobContracts[_contractId];
-        require(msg.sender == jobContract.freelancer, "Only the assigned freelancer can complete this contract");
+        require(msg.sender == jobContract.freelancer, "Only the assigned freelancer can mark this contract as complete");
         require(jobContract.status == ContractStruct.Status.Accepted, "Contract is not in a valid state for completion");
-        jobContract.status = ContractStruct.Status.Completed;
-        // Release the contract value to the freelancer
-        payable(jobContract.freelancer).transfer(jobContract.value);
+        jobContract.freelancerSatisfied = true;
+        finalizeContract(_contractId);
+    }
+
+    function employerSatisfyContract(uint256 _contractId) external {
+        ContractStruct.JobContract storage jobContract = jobContracts[_contractId];
+        require(msg.sender == jobContract.employer, "Only the employer can mark this contract as complete");
+        require(jobContract.status == ContractStruct.Status.Accepted, "Contract is not in a valid state for completion");
+        jobContract.employerSatisfied = true;
+        finalizeContract(_contractId);
+    }
+
+    function finalizeContract(uint256 _contractId) internal {
+        ContractStruct.JobContract storage jobContract = jobContracts[_contractId];
+        if (jobContract.freelancerSatisfied && jobContract.employerSatisfied) {
+            jobContract.status = ContractStruct.Status.Completed;
+            // Release the contract value to the freelancer
+            payable(jobContract.freelancer).transfer(jobContract.value);
+        }
     }
 
     function viewContract(uint256 _contractId) external view returns (ContractStruct.JobContract memory) {

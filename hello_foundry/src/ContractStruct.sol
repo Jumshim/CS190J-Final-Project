@@ -9,6 +9,8 @@ library ContractStruct {
         address employer;
         address freelancer;
         Status status;
+        bool freelancerSatisfied;
+        bool employerSatisfied;
     }
 
     enum Status { Created, Accepted, Rejected, Completed }

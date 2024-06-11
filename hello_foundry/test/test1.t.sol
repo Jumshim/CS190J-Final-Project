@@ -77,7 +77,49 @@ contract MarketplaceTest is Test {
         assertEq(uint(jobContract.status), uint(ContractStruct.Status.Accepted), "Contract status should be Accepted");
     }
 
-    function testSatisfyContract() public {
+    function testFreelancerSatisfyContract() public {
+        vm.prank(employer);
+        marketplace.registerAsEmployer();
+
+        vm.prank(freelancer);
+        marketplace.registerAsFreelancer();
+
+        vm.prank(employer);
+        marketplace.sendContract{value: 5 ether}(freelancer, 1650938400);
+
+        vm.prank(freelancer);
+        marketplace.acceptContract(0);
+
+        vm.prank(freelancer);
+        marketplace.freelancerSatisfyContract(0);
+
+        ContractStruct.JobContract memory jobContract = marketplace.viewContract(0);
+
+        assertTrue(jobContract.freelancerSatisfied, "Freelancer should have satisfied the contract");
+    }
+
+    function testEmployerSatisfyContract() public {
+        vm.prank(employer);
+        marketplace.registerAsEmployer();
+
+        vm.prank(freelancer);
+        marketplace.registerAsFreelancer();
+
+        vm.prank(employer);
+        marketplace.sendContract{value: 5 ether}(freelancer, 1650938400);
+
+        vm.prank(freelancer);
+        marketplace.acceptContract(0);
+
+        vm.prank(employer);
+        marketplace.employerSatisfyContract(0);
+
+        ContractStruct.JobContract memory jobContract = marketplace.viewContract(0);
+
+        assertTrue(jobContract.employerSatisfied, "Employer should have satisfied the contract");
+    }
+
+    function testCompleteContract() public {
         vm.prank(employer);
         marketplace.registerAsEmployer();
 
@@ -92,7 +134,9 @@ contract MarketplaceTest is Test {
 
         uint256 balanceBefore = freelancer.balance;
         vm.prank(freelancer);
-        marketplace.satisfyContract(0);
+        marketplace.freelancerSatisfyContract(0);
+        vm.prank(employer);
+        marketplace.employerSatisfyContract(0);
         uint256 balanceAfter = freelancer.balance;
 
         ContractStruct.JobContract memory jobContract = marketplace.viewContract(0);
