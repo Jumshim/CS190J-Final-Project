@@ -111,4 +111,18 @@ contract Marketplace {
         require(jobContract.status == ContractStruct.Status.Completed, "Contract is not completed");
         payable(jobContract.freelancer).transfer(jobContract.value);
     }
+
+    function refundExpiredContract(uint256 _contractId) external {
+        ContractStruct.JobContract storage jobContract = jobContracts[_contractId];
+        require(msg.sender == jobContract.employer, "Only the employer can request a refund");
+        require(block.timestamp > jobContract.deadlineDate, "Contract has not expired yet");
+        require(
+            jobContract.status == ContractStruct.Status.Created || 
+            jobContract.status == ContractStruct.Status.Accepted,
+            "Contract is not in a refundable state"
+        );
+        jobContract.status = ContractStruct.Status.Rejected;
+        // Refund the contract value to the employer
+        payable(jobContract.employer).transfer(jobContract.value);
+    }
 }

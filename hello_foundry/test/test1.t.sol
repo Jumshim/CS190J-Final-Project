@@ -157,4 +157,20 @@ contract MarketplaceTest is Test {
         assertEq(uint(jobContract.status), uint(ContractStruct.Status.Completed), "Contract status should be Completed");
         assertEq(balanceAfter, balanceBefore + 5 ether, "Freelancer balance mismatch");
     }
+
+    function testRefundExpiredContract() public {
+        vm.prank(employer);
+        marketplace.registerAsEmployer();
+
+        vm.prank(freelancer);
+        marketplace.registerAsFreelancer();
+
+        vm.prank(employer);
+        marketplace.sendContract{value: 5 ether}(freelancer, 1); // 1 day
+
+        // Try to refund before the contract has expired
+        vm.prank(employer);
+        vm.expectRevert("Contract has not expired yet");
+        marketplace.refundExpiredContract(0);
+    }
 }
