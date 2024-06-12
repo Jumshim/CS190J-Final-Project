@@ -6,9 +6,20 @@ import "./ContractStruct.sol";
 contract Marketplace {
     enum AccountType { None, Employer, Freelancer, Escrow }
 
+    address public escrow;  // Address of the escrow account
+
     mapping(address => AccountType) public accounts;
     mapping(uint256 => ContractStruct.JobContract) private jobContracts;
     uint256 private contractCount;
+
+    modifier onlyEscrow() {
+        require(msg.sender == escrow, "Only the escrow account can call this function");
+        _;
+    }
+
+    constructor(address _escrow) {
+        escrow = _escrow;
+    }
 
     function registerAsEmployer() external {
         require(accounts[msg.sender] == AccountType.None, "Already registered as another role");
@@ -22,6 +33,7 @@ contract Marketplace {
 
     function registerAsEscrow() external {
         require(accounts[msg.sender] == AccountType.None, "Already registered as another role");
+        require(msg.sender == escrow, "Only the designated escrow address can register as escrow");
         accounts[msg.sender] = AccountType.Escrow;
     }
 
@@ -29,7 +41,8 @@ contract Marketplace {
         require(accounts[msg.sender] == AccountType.Employer, "Only employers can send contracts");
         require(accounts[_freelancer] == AccountType.Freelancer, "Can only send contracts to freelancers");
         require(msg.value > 0, "Must send ether to fund the contract");
-        require(_days > 0, "Contract length must be at least one day");
+        require(_days > 0, "Must specify a positive number of days");
+
         uint256 contractId = contractCount++;
         uint256 deadlineDate = block.timestamp + (_days * 1 days);
         jobContracts[contractId] = ContractStruct.JobContract({
@@ -43,6 +56,9 @@ contract Marketplace {
             freelancerSatisfied: false,
             employerSatisfied: false
         });
+
+        // Transfer the funds to the escrow account
+        payable(escrow).transfer(msg.value);
     }
 
     function acceptContract(uint256 _contractId) external {
@@ -57,8 +73,6 @@ contract Marketplace {
         require(msg.sender == jobContract.freelancer, "Only the assigned freelancer can reject this contract");
         require(jobContract.status == ContractStruct.Status.Created, "Contract is not in a valid state for rejection");
         jobContract.status = ContractStruct.Status.Rejected;
-        // Refund the contract value to the employer
-        payable(jobContract.employer).transfer(jobContract.value);
     }
 
     function freelancerSatisfyContract(uint256 _contractId) external {
@@ -81,48 +95,40 @@ contract Marketplace {
         ContractStruct.JobContract storage jobContract = jobContracts[_contractId];
         if (jobContract.freelancerSatisfied && jobContract.employerSatisfied) {
             jobContract.status = ContractStruct.Status.Completed;
-            // Release the contract value to the freelancer
-            payable(jobContract.freelancer).transfer(jobContract.value);
         }
+    }
+
+    function checkContracts() external onlyEscrow returns (uint256[] memory, uint256[] memory) {
+        uint256[] memory toRefund = new uint256[](contractCount);
+        uint256[] memory toPayout = new uint256[](contractCount);
+        uint256 refundCount = 0;
+        uint256 payoutCount = 0;
+
+        for (uint256 i = 0; i < contractCount; i++) {
+            ContractStruct.JobContract storage jobContract = jobContracts[i];
+            if ((jobContract.status == ContractStruct.Status.Accepted || jobContract.status == ContractStruct.Status.Created) && block.timestamp > jobContract.deadlineDate) {
+                jobContract.status = ContractStruct.Status.Rejected;
+                toRefund[refundCount] = i;
+                refundCount++;
+            } else if (jobContract.status == ContractStruct.Status.Completed) {
+                toPayout[payoutCount] = i;
+                payoutCount++;
+            } else if (jobContract.status == ContractStruct.Status.Rejected) {
+                toRefund[refundCount] = i;
+                refundCount++;
+            }
+        }
+
+        // Resize arrays to actual counts
+        assembly {
+            mstore(toRefund, refundCount)
+            mstore(toPayout, payoutCount)
+        }
+
+        return (toRefund, toPayout);
     }
 
     function viewContract(uint256 _contractId) external view returns (ContractStruct.JobContract memory) {
         return jobContracts[_contractId];
-    }
-
-    function registerAddress(address _user) external {
-        require(accounts[msg.sender] == AccountType.Escrow, "Only escrow accounts can register addresses");
-        require(accounts[_user] == AccountType.None, "User already registered");
-        accounts[_user] = AccountType.None;
-    }
-
-    function checkContracts() external view returns (uint256[] memory) {
-        require(accounts[msg.sender] == AccountType.Escrow, "Only escrow accounts can check contracts");
-        uint256[] memory ids = new uint256[](contractCount);
-        for (uint256 i = 0; i < contractCount; i++) {
-            ids[i] = i;
-        }
-        return ids;
-    }
-
-    function payoutContracts(uint256 _contractId) external {
-        require(accounts[msg.sender] == AccountType.Escrow, "Only escrow accounts can payout contracts");
-        ContractStruct.JobContract storage jobContract = jobContracts[_contractId];
-        require(jobContract.status == ContractStruct.Status.Completed, "Contract is not completed");
-        payable(jobContract.freelancer).transfer(jobContract.value);
-    }
-
-    function refundExpiredContract(uint256 _contractId) external {
-        ContractStruct.JobContract storage jobContract = jobContracts[_contractId];
-        require(msg.sender == jobContract.employer, "Only the employer can request a refund");
-        require(block.timestamp > jobContract.deadlineDate, "Contract has not expired yet");
-        require(
-            jobContract.status == ContractStruct.Status.Created || 
-            jobContract.status == ContractStruct.Status.Accepted,
-            "Contract is not in a refundable state"
-        );
-        jobContract.status = ContractStruct.Status.Rejected;
-        // Refund the contract value to the employer
-        payable(jobContract.employer).transfer(jobContract.value);
     }
 }
