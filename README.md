@@ -12,6 +12,23 @@ If they register as an employer, they can send contracts to freelancers as well 
 
 If they register as a freelancer, they can accept or reject any contracts that they are sent, as well as satisfy their contracts when they've been completed.
 
+### Specific
+Using the `vm` operator from `StdUtils`, set up mock addresses / accounts relevant to the functionalities you want to test
+
+i.e:
+```
+address public employer = address(0x1);
+address public freelancer = address(0x2);
+address public escrow = address(0x3);
+```
+
+Deal an X amount of ether funds to the relevant accounts using `vm.deal(address, # ether)` 
+
+Create a Marketplace instance and interact with the project through the various APIs. Try out different simulations 
+
+Assign roles to the relevant addresses and utilize the `vm.prank` function to masquerade your actions under a specific address
+- Creating a UI was not in the scope of this project, so interacting with the project should be done through Foundry's testing / utility suite!
+
 ## APIs
 
 We have a JobContract that holds all details of a contract between an employer and a freelancer, including the employer address, freelancer address, date assigned, deadline, value, and status.
