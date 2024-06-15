@@ -7,6 +7,8 @@ Our project is a smart contract application that aims to allow employers to secu
 ## How to use our application
 
 Forge is needed to use our application. Once it's set up, a user needs to register as either an employer or freelancer.
+- Follow the steps for forge: https://book.getfoundry.sh/getting-started/installation
+- within the main project directory, run `forge test`
 
 If they register as an employer, they can send contracts to freelancers as well as satisfy the contract when the freelancer has completed work
 
